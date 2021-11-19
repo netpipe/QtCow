@@ -1,7 +1,7 @@
 // qsynth.cpp
 //
 /****************************************************************************
-   Copyright (C) 2003-2021, rncbc aka Rui Nuno Capela. All rights reserved.
+   Copyright (C) 2003-2020, rncbc aka Rui Nuno Capela. All rights reserved.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License
@@ -108,11 +108,7 @@ qsynthApplication::qsynthApplication ( int& argc, char **argv )
 		// Try own Qt translation...
 		m_pQtTranslator = new QTranslator(this);
 		QString sLocName = "qt_" + loc.name();
-	#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-		QString sLocPath = QLibraryInfo::path(QLibraryInfo::TranslationsPath);
-	#else
 		QString sLocPath = QLibraryInfo::location(QLibraryInfo::TranslationsPath);
-	#endif
 		if (m_pQtTranslator->load(sLocName, sLocPath)) {
 			QApplication::installTranslator(m_pQtTranslator);
 		} else {
@@ -480,13 +476,8 @@ int main ( int argc, char **argv )
 	::signal(SIGBUS,  stacktrace);
 #endif
 #endif
-#if defined(Q_OS_LINUX)
-	::setenv("QT_QPA_PLATFORM", "xcb", 0);
-#endif
 #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
-#if QT_VERSION <  QT_VERSION_CHECK(6, 0, 0)
 	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
 #endif
 
 	qsynthApplication app(argc, argv);

@@ -31,7 +31,7 @@
 #include <QPixmapCache>
 #include <QPainter>
 
-#include <QtMath>
+#include <cmath>
 
 static const bool UsePixmapCache = true;
 

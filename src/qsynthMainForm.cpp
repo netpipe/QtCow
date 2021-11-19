@@ -1,7 +1,7 @@
 // qsynthMainForm.cpp
 //
 /****************************************************************************
-   Copyright (C) 2003-2021, rncbc aka Rui Nuno Capela. All rights reserved.
+   Copyright (C) 2003-2020, rncbc aka Rui Nuno Capela. All rights reserved.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License
@@ -44,6 +44,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QDateTime>
+#include <QRegExp>
 #include <QTimer>
 #include <QMenu>
 #include <QUrl>
@@ -76,8 +77,8 @@ const WindowFlags WindowCloseButtonHint = WindowFlags(0x08000000);
 #define QSYNTH_MASTER_GAIN_SCALE    100.0f
 
 #define QSYNTH_REVERB_ROOM_SCALE    100.0f
-#define QSYNTH_REVERB_DAMP_SCALE    100.0f
-#define QSYNTH_REVERB_WIDTH_SCALE   100.0f
+#define QSYNTH_REVERB_DAMP_SCALE	100.0f
+#define QSYNTH_REVERB_WIDTH_SCALE   1.0f
 #define QSYNTH_REVERB_LEVEL_SCALE   100.0f
 
 #define QSYNTH_CHORUS_NR_SCALE      1.0f
@@ -99,112 +100,6 @@ static int g_fdStdout[2] = { QSYNTH_FDNIL, QSYNTH_FDNIL };
 
 
 //-------------------------------------------------------------------------
-// Fix deprecated Reverb/Chorus API (FluidSynth >= 2.2.0).
-//
-#if (FLUIDSYNTH_VERSION_MAJOR >= 2 && FLUIDSYNTH_VERSION_MINOR >= 2) || (FLUIDSYNTH_VERSION_MAJOR > 2)
-
-static void qsynth_set_reverb_on(fluid_synth_t *synth, int on)
-	{ ::fluid_synth_reverb_on(synth, 0, on); }
-
-static void qsynth_set_reverb (
-	fluid_synth_t *synth, double roomsize, double damp, double width, double level )
-{
-	::fluid_synth_set_reverb_group_roomsize(synth, 0, roomsize);
-	::fluid_synth_set_reverb_group_damp(synth, 0, damp);
-	::fluid_synth_set_reverb_group_width(synth, 0, width);
-	::fluid_synth_set_reverb_group_level(synth, 0, level);
-}
-
-static void qsynth_get_reverb (
-	fluid_synth_t *synth, double *roomsize, double *damp, double *width, double *level )
-{
-	::fluid_synth_get_reverb_group_roomsize(synth, 0, roomsize);
-	::fluid_synth_get_reverb_group_damp(synth, 0, damp);
-	::fluid_synth_get_reverb_group_width(synth, 0, width);
-	::fluid_synth_get_reverb_group_level(synth, 0, level);
-}
-
-static void qsynth_set_chorus_on(fluid_synth_t *synth, int on)
-	{ ::fluid_synth_chorus_on(synth, 0, on); }
-
-static void qsynth_set_chorus (
-	fluid_synth_t *synth, int nr, double level, double speed, double depth, int type )
-{
-	::fluid_synth_set_chorus_group_nr(synth, 0, nr);
-	::fluid_synth_set_chorus_group_level(synth, 0, level);
-	::fluid_synth_set_chorus_group_speed(synth, 0, speed);
-	::fluid_synth_set_chorus_group_depth(synth, 0, depth);
-	::fluid_synth_set_chorus_group_type(synth, 0, type);
-}
-
-static void qsynth_get_chorus (
-	fluid_synth_t *synth, int *nr, double *level, double *speed, double *depth, int *type )
-{
-	::fluid_synth_get_chorus_group_nr(synth, 0, nr);
-	::fluid_synth_get_chorus_group_level(synth, 0, level);
-	::fluid_synth_get_chorus_group_speed(synth, 0, speed);
-	::fluid_synth_get_chorus_group_depth(synth, 0, depth);
-	::fluid_synth_get_chorus_group_type(synth, 0, type);
-}
-
-#else
-
-static void qsynth_set_reverb_on(fluid_synth_t *synth, int on)
-	{ ::fluid_synth_set_reverb_on(synth, on); }
-
-static void qsynth_set_reverb (
-	fluid_synth_t *synth, double roomsize, double damp, double width, double level )
-{
-	::fluid_synth_set_reverb_roomsize(synth, roomsize);
-	::fluid_synth_set_reverb_damp(synth, damp);
-	::fluid_synth_set_reverb_width(synth, width);
-	::fluid_synth_set_reverb_level(synth, level);
-}
-
-static void qsynth_get_reverb (
-	fluid_synth_t *synth, double *roomsize, double *damp, double *width, double *level )
-{
-	*roomsize = ::fluid_synth_get_reverb_roomsize(synth);
-	*damp = ::fluid_synth_get_reverb_damp(synth);
-	*width = ::fluid_synth_get_reverb_width(synth);
-	*level = ::fluid_synth_get_reverb_level(synth);
-}
-
-static void qsynth_set_chorus_on(fluid_synth_t *synth, int on)
-	{ ::fluid_synth_set_chorus_on(synth, on); }
-
-static void qsynth_set_chorus (
-	fluid_synth_t *synth, int nr, double level, double speed, double depth, int type )
-{
-	::fluid_synth_set_chorus_nr(synth, nr);
-	::fluid_synth_set_chorus_level(synth, level);
-	::fluid_synth_set_chorus_speed(synth, speed);
-	::fluid_synth_set_chorus_depth(synth, depth);
-	::fluid_synth_set_chorus_type(synth, type);
-}
-
-static void qsynth_get_chorus (
-	fluid_synth_t *synth, int *nr, double *level, double *speed, double *depth, int *type )
-{
-	*nr = ::fluid_synth_get_chorus_nr(synth);
-	*level = ::fluid_synth_get_chorus_level(synth);
-#ifdef CONFIG_FLUID_SYNTH_GET_CHORUS_SPEED
-	*speed = ::fluid_synth_get_chorus_speed(synth);
-#else
-	*speed = ::fluid_synth_get_chorus_speed_Hz(synth);
-#endif
-#ifdef CONFIG_FLUID_SYNTH_GET_CHORUS_DEPTH
-	*depth = ::fluid_synth_get_chorus_depth(synth);
-#else
-	*depth = ::fluid_synth_get_chorus_depth_ms(synth);
-#endif
-	*type = ::fluid_synth_get_chorus_type(synth);
-}
-
-#endif
-
-
-//-------------------------------------------------------------------------
 // UNIX Signal handling support stuff.
 
 #ifdef HAVE_SIGNAL_H
@@ -222,7 +117,7 @@ static void qsynth_sigterm_handler ( int /* signo */ )
 {
 	char c = 1;
 
-	(void) (::write(g_fdSigterm[0], &c, sizeof(c)) > 0);
+	(::write(g_fdSigterm[0], &c, sizeof(c)) > 0);
 }
 
 #endif	// HAVE_SIGNAL_H
@@ -230,7 +125,7 @@ static void qsynth_sigterm_handler ( int /* signo */ )
 
 // Needed for lroundf()
 #ifdef CONFIG_ROUND
-#include <QtMath>
+#include <math.h>
 #else
 static inline long lroundf ( float x )
 {
@@ -957,11 +852,7 @@ void qsynthMainForm::closeEvent ( QCloseEvent *pCloseEvent )
 	// Let's be sure about that...
 	if (queryClose()) {
 		pCloseEvent->accept();
-	#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-		QApplication::exit(0);
-	#else
 		QApplication::quit();
-	#endif
 	} else {
 		pCloseEvent->ignore();
 	}
@@ -969,8 +860,8 @@ void qsynthMainForm::closeEvent ( QCloseEvent *pCloseEvent )
 
 
 // Add dropped files to playlist or soundfont stack.
-void qsynthMainForm::playLoadFiles (
-	qsynthEngine *pEngine, const QStringList& files, bool bSetup )
+void qsynthMainForm::playLoadFiles ( qsynthEngine *pEngine,
+	const QStringList& files, bool bSetup )
 {
 	if (pEngine == nullptr)
 		return;
@@ -1010,37 +901,17 @@ void qsynthMainForm::playLoadFiles (
 			}
 		}
 		else  // Or is it a bare midifile?
-		if (::fluid_is_midifile(sFilename.toLocal8Bit().data())) {
-			// Destroy the MIDI player, if done already...
-			if (pEngine->pPlayer &&
-				::fluid_player_get_status(pEngine->pPlayer) == FLUID_PLAYER_DONE) {
-				appendMessages(sPrefix + tr("Destroying MIDI player") + sElipsis);
-				::delete_fluid_player(pEngine->pPlayer);
-				pEngine->pPlayer = nullptr;
-			}
-			// Create the MIDI player, if not already...
-			if (pEngine->pPlayer == nullptr) {
-				appendMessages(sPrefix + tr("Creating MIDI player") + sElipsis);
-				pEngine->pPlayer = ::new_fluid_player(pEngine->pSynth);
-				if (pEngine->pPlayer == nullptr) {
-					appendMessagesError(sPrefix +
-						tr("Failed to create the MIDI player.\n\n"
-						"Continuing without a player."));
-				}
-			}
-			// Add file to the MIDI player play-list...
-			if (pEngine->pPlayer) {
-				appendMessagesColor(sPrefix +
-					tr("Playing MIDI file: \"%1\"")
-					.arg(sFilename) + sElipsis, "#99cc66");
-				if (::fluid_player_add(
-						pEngine->pPlayer, sFilename.toLocal8Bit().data()) >= 0) {
-					iMidiFiles++;
-				} else {
-					appendMessagesError(sPrefix +
-						tr("Failed to play MIDI file: \"%1\".")
-						.arg(sFilename));
-				}
+		if (::fluid_is_midifile(sFilename.toLocal8Bit().data()) && pEngine->pPlayer) {
+			appendMessagesColor(sPrefix +
+				tr("Playing MIDI file: \"%1\"")
+				.arg(sFilename) + sElipsis, "#99cc66");
+			if (::fluid_player_add(
+					pEngine->pPlayer, sFilename.toLocal8Bit().data()) >= 0) {
+				iMidiFiles++;
+			} else {
+				appendMessagesError(sPrefix +
+					tr("Failed to play MIDI file: \"%1\".")
+					.arg(sFilename));
 			}
 		}
 	}
@@ -1052,10 +923,8 @@ void qsynthMainForm::playLoadFiles (
 	}
 
 	// Start playing, if any...
-	if (pEngine->pPlayer && iMidiFiles > 0) {
-		::fluid_player_set_loop(pEngine->pPlayer, 1);
+	if (pEngine->pPlayer && iMidiFiles > 0)
 		::fluid_player_play(pEngine->pPlayer);
-	}
 }
 
 
@@ -1123,11 +992,6 @@ void qsynthMainForm::sigtermNotifySlot ( int /* fd */ )
 }
 
 
-#if defined(Q_CC_GNU) || defined(Q_CC_MINGW)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#endif
-
 // Set stdout/stderr blocking mode.
 bool qsynthMainForm::stdoutBlock ( int fd, bool bBlock ) const
 {
@@ -1166,10 +1030,6 @@ void qsynthMainForm::stdoutNotifySlot ( int fd )
 #endif
 }
 
-#if defined(Q_CC_GNU) || defined(Q_CC_MINGW)
-#pragma GCC diagnostic pop
-#endif
-
 
 // Stdout buffer handler -- now splitted by complete new-lines...
 void qsynthMainForm::appendStdoutBuffer ( const QString& s )
@@ -1183,17 +1043,12 @@ void qsynthMainForm::processStdoutBuffer (void)
 {
 	const int iLength = m_sStdoutBuffer.lastIndexOf('\n');
 	if (iLength > 0) {
-		QStringListIterator iter(m_sStdoutBuffer.left(iLength).split('\n'));
-		while (iter.hasNext()) {
-			const QString& sTemp = iter.next();
-			if (!sTemp.isEmpty())
-			#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-				appendMessagesText(sTemp.trimmed());
-			#else
-				appendMessagesText(sTemp);
-			#endif
-		}
+		const QString& sTemp = m_sStdoutBuffer.left(iLength);
 		m_sStdoutBuffer.remove(0, iLength + 1);
+		QStringList list = sTemp.split('\n');
+		QStringListIterator iter(list);
+		while (iter.hasNext())
+			appendMessagesText(iter.next());
 	}
 }
 
@@ -1201,14 +1056,8 @@ void qsynthMainForm::processStdoutBuffer (void)
 // Stdout flusher -- show up any unfinished line...
 void qsynthMainForm::flushStdoutBuffer (void)
 {
-	processStdoutBuffer();
-
 	if (!m_sStdoutBuffer.isEmpty()) {
-	#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-		appendMessagesText(m_sStdoutBuffer.trimmed());
-	#else
-		appendMessagesText(m_sStdoutBuffer);
-	#endif
+		processStdoutBuffer();
 		m_sStdoutBuffer.clear();
 	}
 }
@@ -1660,7 +1509,7 @@ void qsynthMainForm::toggleMainForm (void)
 
 	m_pOptions->saveWidgetGeometry(this, true);
 
-	if (isVisible() && !isMinimized()) {
+	if (isVisible() && !isMinimized() && isActiveWindow()) {
 	#ifdef CONFIG_SYSTEM_TRAY
 		// Hide away from sight, totally...
 		if (m_pOptions->bSystemTray && m_pSystemTray)
@@ -1670,7 +1519,6 @@ void qsynthMainForm::toggleMainForm (void)
 		// Minimize (iconify) normally.
 		showMinimized();
 	} else {
-		// Show normally.
 		showNormal();
 		raise();
 		activateWindow();
@@ -2107,6 +1955,18 @@ bool qsynthMainForm::startEngine ( qsynthEngine *pEngine )
 		}
 	}
 
+	// Create the MIDI player.
+	appendMessages(sPrefix + tr("Creating MIDI player") + sElipsis);
+	pEngine->pPlayer = ::new_fluid_player(pEngine->pSynth);
+	if (pEngine->pPlayer == nullptr) {
+		appendMessagesError(sPrefix +
+			tr("Failed to create the MIDI player.\n\n"
+			"Continuing without a player."));
+	} else {
+		// Play the midi files, if any.
+		playLoadFiles(pEngine, pSetup->midifiles, false);
+	}
+
 	// Run the server, if requested.
 	if (pSetup->bServer) {
 	#ifdef CONFIG_FLUID_SERVER
@@ -2183,9 +2043,6 @@ bool qsynthMainForm::startEngine ( qsynthEngine *pEngine )
 
 	// All is right.
 	appendMessages(sPrefix + tr("Synthesizer engine started."));
-
-	// Play the midi files, if any...
-	playLoadFiles(pEngine, pSetup->midifiles, false);
 
 	return true;
 }
@@ -2423,7 +2280,7 @@ void qsynthMainForm::setEngineReverbOn ( qsynthEngine *pEngine, bool bActive )
 		+ ": fluid_synth_set_reverb_on("
 		+ QString::number((int) bActive) + ")", "#99cc33");
 
-	qsynth_set_reverb_on(pEngine->pSynth, (int) bActive);
+	::fluid_synth_set_reverb_on(pEngine->pSynth, (int) bActive);
 }
 
 void qsynthMainForm::setEngineReverb ( qsynthEngine *pEngine,
@@ -2436,7 +2293,7 @@ void qsynthMainForm::setEngineReverb ( qsynthEngine *pEngine,
 		+ QString::number(fWidth) + ","
 		+ QString::number(fLevel) + ")", "#99cc66");
 
-	qsynth_set_reverb(pEngine->pSynth, fRoom, fDamp, fWidth, fLevel);
+	::fluid_synth_set_reverb(pEngine->pSynth, fRoom, fDamp, fWidth, fLevel);
 }
 
 
@@ -2447,7 +2304,7 @@ void qsynthMainForm::setEngineChorusOn ( qsynthEngine *pEngine, bool bActive )
 		+ ": fluid_synth_set_chorus_on("
 		+ QString::number((int) bActive) + ")", "#cc9933");
 
-	qsynth_set_chorus_on(pEngine->pSynth, (int) bActive);
+	::fluid_synth_set_chorus_on(pEngine->pSynth, (int) bActive);
 }
 
 void qsynthMainForm::setEngineChorus ( qsynthEngine *pEngine,
@@ -2461,7 +2318,7 @@ void qsynthMainForm::setEngineChorus ( qsynthEngine *pEngine,
 		+ QString::number(fDepth) + ","
 		+ QString::number(iType)  + ")", "#cc9966");
 
-	qsynth_set_chorus(pEngine->pSynth, iNr, fLevel, fSpeed, fDepth, iType);
+	::fluid_synth_set_chorus(pEngine->pSynth, iNr, fLevel, fSpeed, fDepth, iType);
 }
 
 
@@ -2854,13 +2711,10 @@ void qsynthMainForm::refreshReverb (void)
 	if (pEngine->pSynth == nullptr)
 		return;
 
-	double fReverbRoom  = 0.0;
-	double fReverbDamp  = 0.0;
-	double fReverbWidth = 0.0;
-	double fReverbLevel = 0.0;
-
-	qsynth_get_reverb(pEngine->pSynth,
-		&fReverbRoom, &fReverbDamp, &fReverbWidth, &fReverbLevel);
+	const double fReverbRoom  = ::fluid_synth_get_reverb_roomsize(pEngine->pSynth);
+	const double fReverbDamp  = ::fluid_synth_get_reverb_damp(pEngine->pSynth);
+	const double fReverbWidth = ::fluid_synth_get_reverb_width(pEngine->pSynth);
+	const double fReverbLevel = ::fluid_synth_get_reverb_level(pEngine->pSynth);
 
 	qsynth_set_range_value(
 		m_ui.ReverbRoomDial, QSYNTH_REVERB_ROOM_SCALE, fReverbRoom);
@@ -2882,14 +2736,19 @@ void qsynthMainForm::refreshChorus (void)
 	if (pEngine->pSynth == nullptr)
 		return;
 
-	int    iChorusNr    = 0;
-	double fChorusLevel = 0.0;
-	double fChorusSpeed = 0.0;
-	double fChorusDepth = 0.0;
-	int    iChorusType  = 0;
-
-	qsynth_get_chorus(pEngine->pSynth,
-		&iChorusNr, &fChorusLevel, &fChorusSpeed, &fChorusDepth, &iChorusType);
+	const int    iChorusNr    = ::fluid_synth_get_chorus_nr(pEngine->pSynth);
+	const double fChorusLevel = ::fluid_synth_get_chorus_level(pEngine->pSynth);
+#ifdef CONFIG_FLUID_SYNTH_GET_CHORUS_SPEED
+	const double fChorusSpeed = ::fluid_synth_get_chorus_speed(pEngine->pSynth);
+#else
+	const double fChorusSpeed = ::fluid_synth_get_chorus_speed_Hz(pEngine->pSynth);
+#endif
+#ifdef CONFIG_FLUID_SYNTH_GET_CHORUS_DEPTH
+	const double fChorusDepth = ::fluid_synth_get_chorus_depth(pEngine->pSynth);
+#else
+	const double fChorusDepth = ::fluid_synth_get_chorus_depth_ms(pEngine->pSynth);
+#endif
+	const int    iChorusType  = ::fluid_synth_get_chorus_type(pEngine->pSynth);
 
 	m_ui.ChorusNrDial->setValue(iChorusNr);
 	qsynth_set_range_value(

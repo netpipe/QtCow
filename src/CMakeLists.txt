@@ -1,14 +1,10 @@
-# project (qsynth)
+set(NAME qsynth)
 
-set (CMAKE_INCLUDE_CURRENT_DIR ON)
+include_directories (
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
 
-set (CMAKE_AUTOUIC ON)
-set (CMAKE_AUTOMOC ON)
-set (CMAKE_AUTORCC ON)
-
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
-    file (REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
-endif ()
 configure_file (cmake_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 set (HEADERS
@@ -75,21 +71,16 @@ set ( TRANSLATIONS
    translations/qsynth_sr.ts
 )
 
-if (QT_VERSION VERSION_LESS 5.15.0)
-    qt5_add_translation (QM_FILES ${TRANSLATIONS})
-else()
-    qt_add_translation (QM_FILES ${TRANSLATIONS})
-endif()
+qt5_add_translation ( QM_FILES ${TRANSLATIONS} )
+add_custom_target( translations ALL DEPENDS ${QM_FILES} )
 
-add_custom_target (translations ALL DEPENDS ${QM_FILES})
+qt5_wrap_ui (UI_SOURCES ${FORMS})
+qt5_wrap_cpp (MOC_SOURCES ${HEADERS})
+qt5_add_resources (QRC_SOURCES ${RESOURCES})
 
 if (WIN32)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/win32/setup.nsi.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/setup.nsi IMMEDIATE @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/win32/${PROJECT_NAME}.rc.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.rc IMMEDIATE @ONLY)
-  set (RC_FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.rc)
-  set (RES_FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.res.obj)
+  set (RC_FILE ${CMAKE_CURRENT_SOURCE_DIR}/win32/${NAME}.rc)
+  set (RES_FILE ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.res.obj)
   find_program (WINDRES_EXECUTABLE NAMES windres mingw32-windres i686-mingw32-windres)
   if (MINGW)
     exec_program (${WINDRES_EXECUTABLE}
@@ -101,88 +92,63 @@ if (WIN32)
 endif ()
 
 if (APPLE)
-  set (ICON_FILE ${CMAKE_CURRENT_SOURCE_DIR}/images/${PROJECT_NAME}.icns)
-  list (APPEND SOURCES ${ICON_FILE} ${QM_FILES})
-  set (MACOSX_BUNDLE_ICON_FILE ${PROJECT_NAME}.icns)
+  set (ICON_FILE ${CMAKE_CURRENT_SOURCE_DIR}/images/${NAME}.icns)
+  list (APPEND SOURCES ${ICON_FILE})
+  set (MACOSX_BUNDLE_ICON_FILE ${NAME}.icns)
   set_source_files_properties (${ICON_FILE} PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources)
-  set_source_files_properties (${QM_FILES} PROPERTIES
-    MACOSX_PACKAGE_LOCATION translations)
-  include(TranslationUtils)
-  add_qt_translations(QT_TRANSLATIONS cs de es fr ru sr)
-  set_source_files_properties (${QT_TRANSLATIONS} PROPERTIES
-    MACOSX_PACKAGE_LOCATION translations)
-  list (APPEND SOURCES ${QT_TRANSLATIONS})
 endif ()
 
-
-add_executable (${PROJECT_NAME}
-  ${HEADERS}
+add_executable (${NAME}
+  ${UI_SOURCES}
+  ${MOC_SOURCES}
+  ${QRC_SOURCES}
   ${SOURCES}
-  ${FORMS}
-  ${RESOURCES}
 )
 
-# Add some debugger flags.
-if (CONFIG_DEBUG AND UNIX AND NOT APPLE)
-  target_compile_options (${PROJECT_NAME} PRIVATE -g -fsanitize=address -fno-omit-frame-pointer)
-  target_link_libraries (${PROJECT_NAME} PRIVATE asan)
-endif ()
-
-set_target_properties (${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
+set_target_properties (${NAME} PROPERTIES CXX_STANDARD 11)
 
 if (WIN32)
-  set_target_properties (${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE true)
+  set_target_properties (${NAME} PROPERTIES WIN32_EXECUTABLE true)
 endif ()
 
 if (APPLE)
-  set_target_properties (${PROJECT_NAME} PROPERTIES
-    MACOSX_BUNDLE true
-    MACOSX_BUNDLE_GUI_IDENTIFIER "org.rncbc.qsynth"
-    MACOSX_BUNDLE_BUNDLE_NAME "${PACKAGE_NAME}"
-    MACOSX_BUNDLE_DISPLAY_NAME "${PACKAGE_NAME}"
-    MACOSX_BUNDLE_INFO_STRING "A fluidsynth Qt GUI Interface"
-    MACOSX_BUNDLE_LONG_VERSION_STRING "${VERSION}"
-    MACOSX_BUNDLE_SHORT_VERSION_STRING "${CONFIG_VERSION}"
-    MACOSX_BUNDLE_BUNDLE_VERSION "${CONFIG_VERSION}"
-    MACOSX_BUNDLE_COPYRIGHT "Copyright © 2003-2021, Rui Nuno Capela. All rights reserved.")
+  set_target_properties (${NAME} PROPERTIES MACOSX_BUNDLE true)
 endif ()
 
-target_link_libraries (${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries (${NAME} PRIVATE Qt5::Widgets)
 
 if (CONFIG_XUNIQUE)
-  target_link_libraries (${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Network)
+  target_link_libraries (${NAME} PRIVATE Qt5::Network)
 endif ()
 
 if (CONFIG_FLUIDSYNTH)
-  target_link_libraries (${PROJECT_NAME} PRIVATE PkgConfig::FLUIDSYNTH)
+  target_link_libraries (${NAME} PRIVATE ${FLUIDSYNTH_LIBRARIES})
 endif ()
 
 if (CONFIG_ROUND)
-  target_link_libraries (${PROJECT_NAME} PRIVATE ${MATH_LIBRARY})
+  target_link_libraries (${NAME} PRIVATE ${MATH_LIBRARY})
 endif ()
 
 
 if (UNIX AND NOT APPLE)
-  install (TARGETS ${PROJECT_NAME} RUNTIME
+  install (TARGETS ${NAME} RUNTIME
      DESTINATION ${CMAKE_INSTALL_BINDIR})
   install (FILES ${QM_FILES}
-     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/translations)
-  install (FILES ${PROJECT_NAME}.desktop
+     DESTINATION ${CMAKE_INSTALL_DATADIR}/${NAME}/translations)
+  install (FILES ${NAME}.desktop
      DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-  install (FILES images/${PROJECT_NAME}.png
+  install (FILES images/${NAME}.png
      DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/32x32/apps)
-  install (FILES images/${PROJECT_NAME}.svg
+  install (FILES images/${NAME}.svg
      DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-  install (FILES appdata/${PROJECT_NAME}.appdata.xml
+  install (FILES appdata/${NAME}.appdata.xml
      DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
 endif ()
 
 if (WIN32)
-   install (TARGETS ${PROJECT_NAME} RUNTIME
+   install (TARGETS ${NAME} RUNTIME
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
    install (FILES ${QM_FILES}
-     DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/translations)
+     DESTINATION ${CMAKE_INSTALL_DATADIR}/${NAME}/translations)
 endif ()
-
-include(DeploymentUtils)

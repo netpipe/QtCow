@@ -1,7 +1,7 @@
 // qsynthSetup.h
 //
 /****************************************************************************
-   Copyright (C) 2003-2021, rncbc aka Rui Nuno Capela. All rights reserved.
+   Copyright (C) 2003-2019, rncbc aka Rui Nuno Capela. All rights reserved.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License
@@ -57,7 +57,6 @@ public:
 	QString sMidiBankSelect;
 	int     iMidiChannels;
 	QString sMidiName;
-	bool    bMidiAutoConnect;
 	QString sAudioDriver;
 	QString sAudioDevice;
 	QString sJackName;
@@ -69,7 +68,6 @@ public:
 	int     iAudioBufCount;
 	QString sSampleFormat;
 	float   fSampleRate;
-    bool    bWasapiExclusive;
 	int     iPolyphony;
 	bool    bReverbActive;
 	double  fReverbRoom;

@@ -1,7 +1,7 @@
 // qsynthSetupForm.cpp
 //
 /****************************************************************************
-   Copyright (C) 2003-2021, rncbc aka Rui Nuno Capela. All rights reserved.
+   Copyright (C) 2003-2020, rncbc aka Rui Nuno Capela. All rights reserved.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License
@@ -168,11 +168,7 @@ static void qsynth_settings_foreach (
 		(pData->pListItem)->setText(iCol++, QString());
 		(pData->pListItem)->setText(iCol++, QString());
 	#ifdef CONFIG_FLUID_SETTINGS_DUPSTR
-    #ifdef CONFIG_FLUID_FREE
-		::fluid_free(pszCurrent);
-    #else
 		::free(pszCurrent);
-    #endif
 	#endif
 		break;
 	}}
@@ -206,13 +202,13 @@ qsynthSetupForm::qsynthSetupForm ( QWidget *pParent )
 	m_pXpmSoundFont = new QPixmap(":/images/sfont1.png");
 
 	// Set dialog validators...
-	QRegularExpression rx("[\\w-]+");
-	m_ui.DisplayNameLineEdit->setValidator(new QRegularExpressionValidator(rx, m_ui.DisplayNameLineEdit));
+	QRegExp rx("[\\w-]+");
+	m_ui.DisplayNameLineEdit->setValidator(new QRegExpValidator(rx, m_ui.DisplayNameLineEdit));
 	m_ui.SampleRateComboBox->setValidator(new QIntValidator(m_ui.SampleRateComboBox));
 	m_ui.AudioBufSizeComboBox->setValidator(new QIntValidator(m_ui.AudioBufSizeComboBox));
 	m_ui.AudioBufCountComboBox->setValidator(new QIntValidator(m_ui.AudioBufCountComboBox));
-	m_ui.JackNameComboBox->setValidator(new QRegularExpressionValidator(rx, m_ui.JackNameComboBox));
-	m_ui.MidiNameComboBox->setValidator(new QRegularExpressionValidator(rx, m_ui.MidiNameComboBox));
+	m_ui.JackNameComboBox->setValidator(new QRegExpValidator(rx, m_ui.JackNameComboBox));
+	m_ui.MidiNameComboBox->setValidator(new QRegExpValidator(rx, m_ui.MidiNameComboBox));
 
 	// No sorting on soundfont stack list.
 	//m_ui.SoundFontListView->setSorting(-1);
@@ -272,9 +268,6 @@ qsynthSetupForm::qsynthSetupForm ( QWidget *pParent )
 	QObject::connect(m_ui.MidiDeviceComboBox,
 		SIGNAL(editTextChanged(const QString&)),
 		SLOT(settingsChanged()));
-	QObject::connect(m_ui.MidiAutoConnectCheckBox,
-		SIGNAL(stateChanged(int)),
-		SLOT(settingsChanged()));
 	QObject::connect(m_ui.MidiChannelsSpinBox,
 		SIGNAL(valueChanged(int)),
 		SLOT(settingsChanged()));
@@ -326,11 +319,6 @@ qsynthSetupForm::qsynthSetupForm ( QWidget *pParent )
 	QObject::connect(m_ui.JackNameComboBox,
 		SIGNAL(editTextChanged(const QString&)),
 		SLOT(settingsChanged()));
-#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-	QObject::connect(m_ui.WasapiExclusiveCheckBox,
-		SIGNAL(stateChanged(int)),
-		SLOT(settingsChanged()));
-#endif
 	QObject::connect(m_ui.SoundFontListView,
 		SIGNAL(customContextMenuRequested(const QPoint&)),
 		SLOT(contextMenuRequested(const QPoint&)));
@@ -374,7 +362,7 @@ qsynthSetupForm::~qsynthSetupForm (void)
 
 // A combo-box text item setter helper.
 void qsynthSetupForm::setComboBoxCurrentText (
-	QComboBox *pComboBox, const QString& sText ) const
+        QComboBox *pComboBox, const QString& sText ) const
 {
 	if (pComboBox->isEditable()) {
 		pComboBox->setEditText(sText);
@@ -474,7 +462,6 @@ void qsynthSetupForm::setup ( qsynthOptions *pOptions, qsynthEngine *pEngine, bo
 	setComboBoxCurrentText(m_ui.MidiBankSelectComboBox,
 		m_pSetup->sMidiBankSelect);
 	m_ui.MidiChannelsSpinBox->setValue(m_pSetup->iMidiChannels);
-	m_ui.MidiAutoConnectCheckBox->setChecked(m_pSetup->bMidiAutoConnect);
 	m_ui.MidiDumpCheckBox->setChecked(m_pSetup->bMidiDump);
 	m_ui.VerboseCheckBox->setChecked(m_pSetup->bVerbose);
 	// ALSA client identifier.
@@ -502,11 +489,6 @@ void qsynthSetupForm::setup ( qsynthOptions *pOptions, qsynthEngine *pEngine, bo
 	m_ui.PolyphonySpinBox->setValue(m_pSetup->iPolyphony);
 	m_ui.JackMultiCheckBox->setChecked(m_pSetup->bJackMulti);
 	m_ui.JackAutoConnectCheckBox->setChecked(m_pSetup->bJackAutoConnect);
-#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-	m_ui.WasapiExclusiveCheckBox->setChecked(m_pSetup->bWasapiExclusive);
-#else
-	m_ui.WasapiExclusiveCheckBox->hide();
-#endif
 	// JACK client name...
 	QString sJackName;
 	if (!m_pSetup->sDisplayName.contains(QSYNTH_TITLE))
@@ -600,7 +582,6 @@ void qsynthSetupForm::accept (void)
 		m_pSetup->bMidiDump        = m_ui.MidiDumpCheckBox->isChecked();
 		m_pSetup->bVerbose         = m_ui.VerboseCheckBox->isChecked();
 		m_pSetup->sMidiName        = m_ui.MidiNameComboBox->currentText();
-		m_pSetup->bMidiAutoConnect = m_ui.MidiAutoConnectCheckBox->isChecked();
 		// Audio settings...
 		m_pSetup->sAudioDriver     = m_ui.AudioDriverComboBox->currentText();
 		m_pSetup->sAudioDevice     = m_ui.AudioDeviceComboBox->currentText();
@@ -612,11 +593,8 @@ void qsynthSetupForm::accept (void)
 		m_pSetup->iAudioGroups     = m_ui.AudioGroupsSpinBox->value();
 		m_pSetup->iPolyphony       = m_ui.PolyphonySpinBox->value();
 		m_pSetup->bJackMulti       = m_ui.JackMultiCheckBox->isChecked();
-		m_pSetup->sJackName        = m_ui.JackNameComboBox->currentText();
 		m_pSetup->bJackAutoConnect = m_ui.JackAutoConnectCheckBox->isChecked();
-	#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-		m_pSetup->bWasapiExclusive = m_ui.WasapiExclusiveCheckBox->isChecked();
-	#endif
+		m_pSetup->sJackName        = m_ui.JackNameComboBox->currentText();
 		// Reset dirty flag.
 		m_iDirtyCount = 0;
 	}
@@ -769,39 +747,18 @@ void qsynthSetupForm::stabilizeForm (void)
 	m_ui.MidiChannelsSpinBox->setEnabled(bEnabled);
 	m_ui.MidiDumpCheckBox->setEnabled(bEnabled);
 	m_ui.VerboseCheckBox->setEnabled(bEnabled);
-	m_ui.MidiBankSelectTextLabel->setEnabled(bEnabled);
+	m_ui.MidiBankSelectLabel->setEnabled(bEnabled);
 	m_ui.MidiBankSelectComboBox->setEnabled(bEnabled);
 	m_ui.MidiNameTextLabel->setEnabled(bEnabled && (bAlsaEnabled | bCoreMidiEnabled));
 	m_ui.MidiNameComboBox->setEnabled(bEnabled && (bAlsaEnabled | bCoreMidiEnabled));
-#if FLUIDSYNTH_VERSION_MAJOR >= 2
-	m_ui.MidiAutoConnectCheckBox->setEnabled(bEnabled);
-#else
-	m_ui.MidiAutoConnectCheckBox->setEnabled(false);
-#endif
+
 	const bool bJackEnabled = (m_ui.AudioDriverComboBox->currentText() == "jack");
-	const bool bJackMultiEnabled = m_ui.JackMultiCheckBox->isChecked();
-#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-	const bool bWasapiEnabled = (m_ui.AudioDriverComboBox->currentText() == "wasapi");
-#endif
 	m_ui.AudioDeviceTextLabel->setEnabled(!bJackEnabled);
 	m_ui.AudioDeviceComboBox->setEnabled(!bJackEnabled);
 	m_ui.JackMultiCheckBox->setEnabled(bJackEnabled);
 	m_ui.JackAutoConnectCheckBox->setEnabled(bJackEnabled);
 	m_ui.JackNameTextLabel->setEnabled(bJackEnabled);
 	m_ui.JackNameComboBox->setEnabled(bJackEnabled);
-#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-	m_ui.WasapiExclusiveCheckBox->setEnabled(bWasapiEnabled);
-#endif
-	if (bJackEnabled) {
-		m_ui.AudioChannelsTextLabel->setEnabled(bJackMultiEnabled);
-		m_ui.AudioChannelsSpinBox->setEnabled(bJackMultiEnabled);
-		m_ui.AudioChannelsSpinBox->setSingleStep(2);
-		m_ui.AudioChannelsSpinBox->setMinimum(2);
-		m_ui.AudioGroupsTextLabel->setEnabled(bJackMultiEnabled);
-		m_ui.AudioGroupsSpinBox->setEnabled(bJackMultiEnabled);
-	//	m_ui.AudioGroupsSpinBox->setSingleStep(2);
-	//	m_ui.AudioGroupsSpinBox->setMinimum(2);
-	}
 
 	m_ui.SoundFontOpenPushButton->setEnabled(true);
 	QTreeWidgetItem *pSelectedItem = m_ui.SoundFontListView->currentItem();

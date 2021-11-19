@@ -1,7 +1,7 @@
 // qsynthSetup.cpp
 //
 /****************************************************************************
-   Copyright (C) 2003-2021, rncbc aka Rui Nuno Capela. All rights reserved.
+   Copyright (C) 2003-2019, rncbc aka Rui Nuno Capela. All rights reserved.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License
@@ -104,11 +104,6 @@ void qsynthSetup::realize (void)
 			sMidiKey.toLocal8Bit().data(),
 			sMidiDevice.toLocal8Bit().data());
 	}
-#if FLUIDSYNTH_VERSION_MAJOR >= 2
-	pszKey = (char *) "midi.autoconnect";
-	::fluid_settings_setint(m_pFluidSettings, pszKey,
-		int(bMidiAutoConnect));
-#endif
 
 	if (!sAudioDriver.isEmpty()) {
 		pszKey = (char *) "audio.driver";
@@ -143,14 +138,6 @@ void qsynthSetup::realize (void)
 	::fluid_settings_setint(m_pFluidSettings, pszKey, int(bJackMulti));
 #endif
 
-#if (FLUIDSYNTH_VERSION_MAJOR >= 2 && FLUIDSYNTH_VERSION_MINOR >= 2) || (FLUIDSYNTH_VERSION_MAJOR > 2)
-#if defined(__WIN32__) || defined(_WIN32) || defined(WIN32)
-	pszKey = (char *) "audio.wasapi.exclusive-mode";
-	::fluid_settings_setint(m_pFluidSettings, pszKey,
-		int(bWasapiExclusive));
-#endif
-#endif
-
 	if (!sSampleFormat.isEmpty()) {
 		pszKey = (char *) "audio.sample-format";
 		::fluid_settings_setstr(m_pFluidSettings, pszKey,
@@ -173,18 +160,12 @@ void qsynthSetup::realize (void)
 	}
 
 	pszKey = (char *) "synth.midi-bank-select";
-	::fluid_settings_setstr(m_pFluidSettings, pszKey,
-		sMidiBankSelect.toLocal8Bit().data());
+	::fluid_settings_setstr(m_pFluidSettings, pszKey, sMidiBankSelect.toLocal8Bit().data());
 
 	if (iAudioChannels > 0) {
 		pszKey = (char *) "synth.audio-channels";
 		::fluid_settings_setint(m_pFluidSettings, pszKey,
 			iAudioChannels);
-	}
-	if (iAudioChannels > 1) {
-		pszKey = (char *) "synth.effects-groups";
-		::fluid_settings_setint(m_pFluidSettings, pszKey,
-			iAudioChannels / 2);
 	}
 	if (iAudioGroups > 0) {
 		pszKey = (char *) "synth.audio-groups";
@@ -201,13 +182,12 @@ void qsynthSetup::realize (void)
 		::fluid_settings_setint(m_pFluidSettings, pszKey,
 			iPolyphony);
 	}
-#if 0//Gain is set on realtime (don't need to set it here)
-	if (fGain > 0.0f) {
-		pszKey = (char *) "synth.gain";
-		::fluid_settings_setnum(m_pFluidSettings, pszKey,
-			double(fGain));
-	}
-#endif
+//  Gain is set on realtime (don't need to set it here)
+//  if (fGain > 0.0f) {
+//		pszKey = (char *) "synth.gain";
+//		::fluid_settings_setnum(m_pFluidSettings, pszKey,
+//			double(fGain));
+//	}
 
 	pszKey = (char *) "synth.reverb.active";
 #if FLUIDSYNTH_VERSION_MAJOR < 2
@@ -235,11 +215,14 @@ void qsynthSetup::realize (void)
 #endif
 
 
-#if FLUIDSYNTH_VERSION_MAJOR < 2
 	pszKey = (char *) "synth.dump";
+#if FLUIDSYNTH_VERSION_MAJOR < 2
 	pszVal = (char *) (bMidiDump ? "yes" : "no");
-	::fluid_settings_setstr(m_pFluidSettings, pszKey, pszVal);
+		::fluid_settings_setstr(m_pFluidSettings, pszKey, pszVal);
+#else
+	::fluid_settings_setint(m_pFluidSettings, pszKey, int(bMidiDump));
 #endif
+
 
 	pszKey = (char *) "synth.verbose";
 #if FLUIDSYNTH_VERSION_MAJOR < 2
